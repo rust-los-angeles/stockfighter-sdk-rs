@@ -1,0 +1,17 @@
+[package]
+
+name = "stockfighter-sdk-rs"
+version = "0.0.1"
+description = "Stockfighter.io SDK written in Rust"
+license = "MIT/Apache-2.0"
+authors = [ "herman@hermanradtke.com" ]
+
+documentation = "https://github.com/rust-los-angeles/stockfighter-sdk-rs"
+homepage = "https://github.com/rust-los-angeles/stockfighter-sdk-rs"
+repository = "https://github.com/rust-los-angeles/stockfighter-sdk-rs"
+
+[lib]
+
+name = "stockfighter"
+
+[dependencies]
