@@ -1,5 +1,5 @@
-
 extern crate hyper;
+extern crate serde_json;
 
 use std::io::Read;
 
@@ -23,7 +23,8 @@ pub fn test() {
     let mut body = String::new();
     res.read_to_string(&mut body).unwrap();
 
-    println!("Response: {}", body);    
+    let value: serde_json::Value = serde_json::from_str(&body).unwrap();
+    println!("Response: {}", value.as_object().unwrap().get("ok").unwrap().as_boolean().unwrap());
 }
 
 
