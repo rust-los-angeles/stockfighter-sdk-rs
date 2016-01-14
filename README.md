@@ -1,5 +1,11 @@
-# sf-sdk-rs
+# stockfighter-sdk-rs
+
 Stockfighter.io SDK written in Rust
+
+## Stockfighter API Documentation
+
+ * [Stockfighter Developer Hub](https://starfighter.readme.io/)
+ * [Stockfighter v1.0 API Documentation](https://starfighter.readme.io/v1.0/docs)
 
 ## License
 
