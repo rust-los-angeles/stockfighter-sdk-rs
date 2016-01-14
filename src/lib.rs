@@ -1,8 +1,6 @@
 
 extern crate hyper;
 
-use std::env;
-use std::io;
 use std::io::Read;
 
 use hyper::Client;
@@ -12,7 +10,7 @@ pub fn test() {
     println!("Hello, Stockfighter!");
 
     // Create a client.
-    let mut client = Client::new();
+    let client = Client::new();
 
     // Creating an outgoing request.
     let mut res = client.get("http://api.stockfighter.io/ob/api/heartbeat")
