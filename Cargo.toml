@@ -17,4 +17,4 @@ name = "stockfighter"
 [dependencies]
 
 hyper = "*"
-serde_json = "*"
+rustc-serialize = "0.3.16"
