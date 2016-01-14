@@ -58,7 +58,7 @@ pub fn quote(venue: &str, stock: &str) -> bool {
     value.as_object().unwrap().get("ok").unwrap().as_boolean().unwrap()
 }
 
-
+#[cfg(test)]
 mod test {
     use super::*;
 
