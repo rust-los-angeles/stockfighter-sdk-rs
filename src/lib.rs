@@ -29,7 +29,7 @@ fn get<U: hyper::client::IntoUrl>(url: U) -> serde_json::Value {
 }
 
 pub fn test_api() {
-    let value = get("http://api.stockfighter.io/ob/api/heartbeat");
+    let value = get("https://api.stockfighter.io/ob/api/heartbeat");
     println!("Response: {}", value.as_object().unwrap().get("ok").unwrap().as_boolean().unwrap());
 }
 
