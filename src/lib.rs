@@ -33,10 +33,10 @@ pub fn test_api() {
     println!("Response: {}", value.as_object().unwrap().get("ok").unwrap().as_boolean().unwrap());
 }
 
-pub fn test_venue(venue: &str) {
+pub fn venue(venue: &str) -> bool {
     let url = format!("https://api.stockfighter.io/ob/api/venues/{}/heartbeat", venue);
     let value = get(&url);
-    println!("Response: {}", value.as_object().unwrap().get("ok").unwrap().as_boolean().unwrap());
+    value.as_object().unwrap().get("ok").unwrap().as_boolean().unwrap()
 }
 
 pub fn quote(venue: &str, stock: &str) -> bool {
@@ -61,6 +61,13 @@ pub fn quote(venue: &str, stock: &str) -> bool {
 #[cfg(test)]
 mod test {
     use super::*;
+
+
+    #[test]
+    fn test_venue() {
+        assert_eq!(true, venue("TESTEX"));
+        assert_eq!(false, venue("INVALID"));
+    }
 
     #[test]
     fn test_quote() {

@@ -14,10 +14,6 @@ repository = "https://github.com/rust-los-angeles/stockfighter-sdk-rs"
 
 name = "stockfighter"
 
-[[bin]]
-name = "stockfighter-bin"
-path = "src/main.rs"
-
 [dependencies]
 
 hyper = "*"
