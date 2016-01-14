@@ -1,8 +1,10 @@
 extern crate stockfighter;
 
-use stockfighter::test;
+use stockfighter::{test_api,test_venue};
 
 fn main() {
-	test();
+    test_api();
+    test_venue("TESTEX");
+    test_venue("NOTANEX");
 }
 

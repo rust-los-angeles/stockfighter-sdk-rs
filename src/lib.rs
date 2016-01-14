@@ -6,7 +6,7 @@ use std::io::Read;
 use hyper::Client;
 use hyper::header::Connection;
 
-pub fn test() {
+pub fn test_api() {
     println!("Hello, Stockfighter!");
 
     // Create a client.
@@ -27,4 +27,23 @@ pub fn test() {
     println!("Response: {}", value.as_object().unwrap().get("ok").unwrap().as_boolean().unwrap());
 }
 
+pub fn test_venue(venue: &str) {
+    // Create a client.
+    let client = Client::new();
 
+    let url = format!("https://api.stockfighter.io/ob/api/venues/{}/heartbeat", venue);
+
+    // Creating an outgoing request.
+    let mut res = client.get(&url)
+        // set a header
+        .header(Connection::close())
+        // let 'er go!
+        .send().unwrap();
+
+    // Read the Response.
+    let mut body = String::new();
+    res.read_to_string(&mut body).unwrap();
+
+    let value: serde_json::Value = serde_json::from_str(&body).unwrap();
+    println!("Response: {}", value.as_object().unwrap().get("ok").unwrap().as_boolean().unwrap());
+}
