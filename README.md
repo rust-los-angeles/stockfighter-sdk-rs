@@ -21,7 +21,8 @@ for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 additional terms or conditions.
 
 ### Mac SSL trouble:
-```$ brew install openssl
+```
+$ brew install openssl
 $ brew link --force openssl
 
 $ export OPENSSL_INCLUDE_DIR=/usr/local/opt/openssl/include 
