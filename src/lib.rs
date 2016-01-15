@@ -41,10 +41,37 @@ pub struct Quote {
     quote_time: Option<String>,
 }
 
+#[derive(RustcDecodable, RustcEncodable, Debug)]
+pub enum OrderDirection {
+    Buy,
+    Sell,
+}
+
+// https://starfighter.readme.io/docs/place-new-order#order-types
+#[derive(RustcDecodable, RustcEncodable, Debug)]
+pub enum OrderType {
+    Limit,
+    Market,
+    FillOrKill,
+    ImmediateOrCancel,
+}
+
+#[derive(RustcDecodable, RustcEncodable, Debug)]
+pub struct StockTicker {
+    name: String,
+    symbol: String,
+}
+
+#[derive(RustcDecodable, RustcEncodable, Debug)]
+pub struct StockList {
+    ok: bool,
+    symbols: Vec< StockTicker>,
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum StockfighterError {
     ApiDown,
-    VenueDown(String),
+    VenueDown(String), // Also means unknown venue
     ApiError
 }
 
@@ -140,6 +167,32 @@ impl Stockfighter {
             false => Err(StockfighterError::ApiError)
         }
     }
+    pub fn stocks_on_a_venue( &self, venue : &str ) -> Result<StockList, StockfighterError> {
+        
+        let url = format!("https://api.stockfighter.io/ob/api/venues/{}/stocks", venue );
+
+        let client = Client::new();
+
+        let mut res = client
+            .get(&url)
+            .header(XStarfighterAuthorization(self.api_key.clone())) // TODO fix the use of clone here
+            .send()
+            .unwrap();
+
+        if res.status != StatusCode::Ok {
+            return Err(StockfighterError::VenueDown(venue.to_owned()));
+        }
+
+        let mut body = String::new();
+        res.read_to_string(&mut body).unwrap();
+
+        let stocklist: StockList = json::decode(&body).unwrap();
+
+        match stocklist.ok {
+            true => Ok(stocklist),
+            false => Err(StockfighterError::ApiError)
+        }
+    }
 }
 
 
@@ -168,4 +221,13 @@ mod test {
         assert_eq!(true, sf.quote("TESTEX", "INVALID").is_err());
         assert_eq!(true, sf.quote("INVALID", "INVALID").is_err());
     }
+
+    #[test]
+    fn test_stocks_on_a_venue() {
+        let sf = Stockfighter::new("");
+        assert_eq!(true, sf.stocks_on_a_venue("TESTEX").is_ok());
+        println!("{:?}", sf.stocks_on_a_venue("TESTEX") );
+        assert_eq!(StockfighterError::VenueDown("INVALID".to_owned()), sf.stocks_on_a_venue("INVALID").unwrap_err());
+    }
+
 }
