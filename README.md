@@ -7,9 +7,13 @@ Stockfighter.io SDK written in Rust
  * [Stockfighter Developer Hub](https://starfighter.readme.io/)
  * [Stockfighter v1.0 API Documentation](https://starfighter.readme.io/v1.0/docs)
 
-## Local Application Development
+## Application Development
 
-This SDK is a library and not suitable to solve the Stockfighter.io levels by itself. You can add this library to Cargo following the instructions on the [crates.io webpage](https://crates.io/crates/stockfighter-sdk-rs/), but it is not complete. If you are developing on this library and want to use it in your app, then you can use cargo to soure your local copy:
+This SDK is a library and not suitable to solve the Stockfighter.io levels by itself. There is a [skeleton stockfighter Rust app](https://github.com/rust-los-angeles/stockfighter-skeleton-app-rs) that you can start building an automated trading application with. Alternatively, you can add this library to an existing app by following the instructions on the [crates.io webpage](https://crates.io/crates/stockfighter-sdk-rs/).
+
+### Local Application Development
+
+This SDK is not complete. If you are developing on this library and want to use it in your app, then you can use cargo to soure your local copy:
 
 Create a `.cargo/config` file in some ancestor of your project’s directory (common places to put it is in the root of your code directory or in your home directory). Inside that file, put this:
 
