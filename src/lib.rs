@@ -4,7 +4,9 @@ extern crate rustc_serialize;
 
 use std::error;
 use std::fmt;
-use std::io::Read;
+use std::io::{self, Read};
+use std::error::Error;
+use std::result;
 
 use hyper::Client;
 use hyper::status::StatusCode;
@@ -70,11 +72,32 @@ pub struct StockList {
     symbols: Vec< StockTicker>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub enum StockfighterError {
     ApiDown,
     VenueDown(String), // Also means unknown venue
-    ApiError
+    ApiError,
+    Hyper(hyper::error::Error),
+    JsonDecoder(rustc_serialize::json::DecoderError),
+    Io(io::Error),
+}
+
+impl From<hyper::error::Error> for StockfighterError {
+    fn from(err: hyper::error::Error) -> Self {
+        StockfighterError::Hyper(err)
+    }
+}
+
+impl From<rustc_serialize::json::DecoderError> for StockfighterError {
+    fn from(err: rustc_serialize::json::DecoderError) -> Self {
+        StockfighterError::JsonDecoder(err)
+    }
+}
+
+impl From<io::Error> for StockfighterError {
+    fn from(err: io::Error) -> Self {
+        StockfighterError::Io(err)
+    }
 }
 
 impl fmt::Display for StockfighterError {
@@ -83,19 +106,36 @@ impl fmt::Display for StockfighterError {
             StockfighterError::ApiDown => write!(f, "API down"),
             StockfighterError::VenueDown(ref venue) => write!(f, "Venue down: {}", venue),
             StockfighterError::ApiError => write!(f, "API error"),
+            StockfighterError::Hyper(ref err) => write!(f, "{}", err),
+            StockfighterError::JsonDecoder(ref err) => write!(f, "{}", err),
+            StockfighterError::Io(ref err) => write!(f, "{}", err),
         }
     }
 }
 
-impl error::Error for StockfighterError {
+impl Error for StockfighterError {
     fn description(&self) -> &str {
         match *self {
             StockfighterError::ApiDown => "API down",
             StockfighterError::VenueDown(_) => "Venue down",
             StockfighterError::ApiError => "API error",
+            StockfighterError::Hyper(ref err) => err.description(),
+            StockfighterError::JsonDecoder(ref err) => err.description(),
+            StockfighterError::Io(ref err) => err.description(),
+        }
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        match *self {
+            StockfighterError::Hyper(ref err) => Some(err as &Error),
+            StockfighterError::JsonDecoder(ref err) => Some(err as &Error),
+            StockfighterError::Io(ref err) => Some(err as &Error),
+            _ => None
         }
     }
 }
+
+pub type Result<T> = result::Result<T, StockfighterError>;
 
 pub struct Stockfighter {
     api_key: String,
@@ -118,21 +158,20 @@ impl Stockfighter {
     /// let sf = Stockfighter::new("fake api key");
     /// assert_eq!(true, sf.heartbeat().is_ok());
     /// ```
-    pub fn heartbeat(&self) -> Result<(), StockfighterError> {
+    pub fn heartbeat(&self) -> Result<()> {
         let client = Client::new();
-        let mut res = client
+        let mut res = try!(client
             .get("https://api.stockfighter.io/ob/api/heartbeat")
-            .send()
-            .unwrap();
+            .send());
 
         if res.status != StatusCode::Ok {
             return Err(StockfighterError::ApiDown);
         }
 
         let mut body = String::new();
-        res.read_to_string(&mut body).unwrap();
+        try!(res.read_to_string(&mut body));
 
-        let hb: Heartbeat = json::decode(&body).unwrap();
+        let hb: Heartbeat = try!(json::decode(&body));
 
         match hb.ok {
             true => Ok(()),
@@ -140,22 +179,21 @@ impl Stockfighter {
         }
     }
 
-    pub fn venue_heartbeat(&self, venue: &str) -> Result<(), StockfighterError> {
+    pub fn venue_heartbeat(&self, venue: &str) -> Result<()> {
         let url = format!("https://api.stockfighter.io/ob/api/venues/{}/heartbeat", venue);
         let client = Client::new();
-        let mut res = client
+        let mut res = try!(client
             .get(&url)
-            .send()
-            .unwrap();
+            .send());
 
         if res.status != StatusCode::Ok {
             return Err(StockfighterError::VenueDown(venue.to_owned()));
         }
 
         let mut body = String::new();
-        res.read_to_string(&mut body).unwrap();
+        try!(res.read_to_string(&mut body));
 
-        let hb: VenueHeartbeat = json::decode(&body).unwrap();
+        let hb: VenueHeartbeat = try!(json::decode(&body));
 
         match hb.ok {
             true => Ok(()),
@@ -163,52 +201,51 @@ impl Stockfighter {
         }
     }
 
-    pub fn quote(&self, venue: &str, stock: &str) -> Result<Quote, StockfighterError> {
+    pub fn quote(&self, venue: &str, stock: &str) -> Result<Quote> {
 
         let url = format!("https://api.stockfighter.io/ob/api/venues/{}/stocks/{}/quote", venue, stock);
 
         let client = Client::new();
 
-        let mut res = client
+        let mut res = try!(client
             .get(&url)
             .header(XStarfighterAuthorization(self.api_key.clone())) // TODO fix the use of clone here
-            .send()
-            .unwrap();
+            .send());
 
         if res.status != StatusCode::Ok {
             return Err(StockfighterError::ApiError);
         }
 
         let mut body = String::new();
-        res.read_to_string(&mut body).unwrap();
+        try!(res.read_to_string(&mut body));
 
-        let quote: Quote = json::decode(&body).unwrap();
+        let quote = try!(json::decode::<Quote>(&body));
 
         match quote.ok {
             true => Ok(quote),
             false => Err(StockfighterError::ApiError)
         }
     }
-    pub fn stocks_on_a_venue( &self, venue : &str ) -> Result<StockList, StockfighterError> {
+
+    pub fn stocks_on_a_venue( &self, venue : &str ) -> Result<StockList> {
         
         let url = format!("https://api.stockfighter.io/ob/api/venues/{}/stocks", venue );
 
         let client = Client::new();
 
-        let mut res = client
+        let mut res = try!(client
             .get(&url)
             .header(XStarfighterAuthorization(self.api_key.clone())) // TODO fix the use of clone here
-            .send()
-            .unwrap();
+            .send());
 
         if res.status != StatusCode::Ok {
             return Err(StockfighterError::VenueDown(venue.to_owned()));
         }
 
         let mut body = String::new();
-        res.read_to_string(&mut body).unwrap();
+        try!(res.read_to_string(&mut body));
 
-        let stocklist: StockList = json::decode(&body).unwrap();
+        let stocklist = try!(json::decode::<StockList>(&body));
 
         match stocklist.ok {
             true => Ok(stocklist),
@@ -232,7 +269,10 @@ mod test {
     fn test_venue() {
         let sf = Stockfighter::new("");
         assert_eq!(true, sf.venue_heartbeat("TESTEX").is_ok());
-        assert_eq!(StockfighterError::VenueDown("INVALID".to_owned()), sf.venue_heartbeat("INVALID").unwrap_err());
+        match sf.venue_heartbeat("INVALID") {
+            Err(StockfighterError::VenueDown(ref s)) if s == "INVALID" => {},
+            _ => panic!()
+        }
     }
 
     #[test]
@@ -249,7 +289,10 @@ mod test {
         let sf = Stockfighter::new("");
         assert_eq!(true, sf.stocks_on_a_venue("TESTEX").is_ok());
         println!("{:?}", sf.stocks_on_a_venue("TESTEX") );
-        assert_eq!(StockfighterError::VenueDown("INVALID".to_owned()), sf.stocks_on_a_venue("INVALID").unwrap_err());
+        match sf.stocks_on_a_venue("INVALID") {
+            Err(StockfighterError::VenueDown(ref s)) if s == "INVALID" => {},
+            _ => panic!()
+        }
     }
 
 }
