@@ -2,7 +2,6 @@
 extern crate hyper;
 extern crate rustc_serialize;
 
-use std::error;
 use std::fmt;
 use std::io::{self, Read};
 use std::error::Error;
