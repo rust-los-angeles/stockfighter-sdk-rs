@@ -2,6 +2,7 @@
 extern crate hyper;
 extern crate rustc_serialize;
 
+use std::fmt;
 use std::io::Read;
 
 use hyper::Client;
@@ -73,6 +74,16 @@ pub enum StockfighterError {
     ApiDown,
     VenueDown(String), // Also means unknown venue
     ApiError
+}
+
+impl fmt::Display for StockfighterError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            StockfighterError::ApiDown => write!(f, "API down"),
+            StockfighterError::VenueDown(ref venue) => write!(f, "Venue down: {}", venue),
+            StockfighterError::ApiError => write!(f, "API error"),
+        }
+    }
 }
 
 pub struct Stockfighter {
