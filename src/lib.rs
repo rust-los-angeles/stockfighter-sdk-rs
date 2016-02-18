@@ -2,6 +2,7 @@
 extern crate hyper;
 extern crate rustc_serialize;
 
+use std::error;
 use std::fmt;
 use std::io::Read;
 
@@ -82,6 +83,16 @@ impl fmt::Display for StockfighterError {
             StockfighterError::ApiDown => write!(f, "API down"),
             StockfighterError::VenueDown(ref venue) => write!(f, "Venue down: {}", venue),
             StockfighterError::ApiError => write!(f, "API error"),
+        }
+    }
+}
+
+impl error::Error for StockfighterError {
+    fn description(&self) -> &str {
+        match *self {
+            StockfighterError::ApiDown => "API down",
+            StockfighterError::VenueDown(_) => "Venue down",
+            StockfighterError::ApiError => "API error",
         }
     }
 }
