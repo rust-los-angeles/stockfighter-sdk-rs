@@ -146,7 +146,6 @@ impl Stockfighter {
         Stockfighter { api_key: api_key.into() }
     }
 
-    ///
     /// Check that the Stockfighter API is up
     ///
     /// # Example
@@ -178,6 +177,16 @@ impl Stockfighter {
         }
     }
 
+    /// Check that a specific venue is up
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use stockfighter::Stockfighter;
+    ///
+    /// let sf = Stockfighter::new("fake api key");
+    /// assert_eq!(true, sf.venue_heartbeat("TESTEX").is_ok());
+    /// ```
     pub fn venue_heartbeat(&self, venue: &str) -> Result<()> {
         let url = format!("https://api.stockfighter.io/ob/api/venues/{}/heartbeat", venue);
         let client = Client::new();
@@ -200,6 +209,16 @@ impl Stockfighter {
         }
     }
 
+    /// Get a quick look at the most recent trade information for a stock.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use stockfighter::Stockfighter;
+    ///
+    /// let sf = Stockfighter::new("fake api key");
+    /// assert_eq!(true, sf.quote("TESTEX", "FOOBAR").is_ok());
+    /// ```
     pub fn quote(&self, venue: &str, stock: &str) -> Result<Quote> {
 
         let url = format!("https://api.stockfighter.io/ob/api/venues/{}/stocks/{}/quote", venue, stock);
@@ -226,8 +245,18 @@ impl Stockfighter {
         }
     }
 
+    /// List the stocks available for trading on a venue
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use stockfighter::Stockfighter;
+    ///
+    /// let sf = Stockfighter::new("fake api key");
+    /// assert_eq!(true, sf.stocks_on_a_venue("TESTEX").is_ok());
+    /// ```
     pub fn stocks_on_a_venue( &self, venue : &str ) -> Result<StockList> {
-        
+
         let url = format!("https://api.stockfighter.io/ob/api/venues/{}/stocks", venue );
 
         let client = Client::new();
