@@ -44,10 +44,14 @@ pub struct Quote {
     quote_time: Option<String>,
 }
 
+// We ran into some trouble where "buy" in json wouldn't decode to
+// OrderDirection::Buy, but will decode to OrderDirection::buy.
+// Instead of fighting it just turn off camel case warnings for this enum.
+#[allow(non_camel_case_types)]
 #[derive(RustcDecodable, RustcEncodable, Debug)]
 pub enum OrderDirection {
-    Buy,
-    Sell,
+    buy,
+    sell,
 }
 
 // https://starfighter.readme.io/docs/place-new-order#order-types
@@ -57,6 +61,31 @@ pub enum OrderType {
     Market,
     FillOrKill,
     ImmediateOrCancel,
+}
+
+#[derive(RustcDecodable, RustcEncodable, Debug)]
+pub struct Fill {
+    price: Option<usize>,
+    qty: Option<usize>,
+    ts: Option<String>,
+}
+
+#[derive(RustcDecodable, RustcEncodable, Debug)]
+pub struct OrderStatus {
+    ok: bool,
+    symbol: Option<String>,
+    venue: Option<String>,
+    direction: Option<OrderDirection>,
+    original_qty: Option<usize>,
+    qty: Option<usize>,
+    price: Option<usize>,
+    order_type: Option<OrderType>,
+    id: Option<usize>,
+    account: Option<String>,
+    ts: Option<String>,
+    fills: Vec<Fill>,
+    total_filled: Option<usize>,
+    open: Option<bool>
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
@@ -251,6 +280,31 @@ impl Stockfighter {
             false => Err(StockfighterError::ApiError)
         }
     }
+
+    pub fn existing_order_status(&self, id: usize, venue: &str, stock: &str) -> Result<OrderStatus> {
+        let url = format!("https://api.stockfighter.io/ob/api/venues/{}/stocks/{}/orders/{}", venue, stock, id);
+
+        let client = Client::new();
+
+        let mut res = try!(client
+            .get(&url)
+            .header(XStarfighterAuthorization(self.api_key.clone())) // TODO fix clone here.
+            .send());
+
+        if res.status != StatusCode::Ok {
+            return Err(StockfighterError::ApiError);
+        }
+
+        let mut body = String::new();
+        try!(res.read_to_string(&mut body));
+        
+        let order_status = try!(json::decode::<OrderStatus>(&body));
+        
+        match order_status.ok {
+            true => Ok(order_status),
+            false => Err(StockfighterError::ApiError)
+        }
+    }
 }
 
 
@@ -294,4 +348,11 @@ mod test {
         }
     }
 
+    #[test]
+    fn test_existing_order_status() {
+        // TODO Create an is_ok test when we figure out how to test this without an API key.
+        // As of now an is_ok test will pass with an existing order and an API key.
+        let sf = Stockfighter::new("");
+        assert!(sf.existing_order_status(1212, "TESTEX", "INVALID").is_err());
+    }
 }
