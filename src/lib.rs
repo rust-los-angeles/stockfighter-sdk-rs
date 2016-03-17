@@ -27,7 +27,7 @@ struct VenueHeartbeat {
     venue: Option<String>,
 }
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(RustcDecodable, RustcEncodable, Debug)]
 pub struct Quote {
     ok: bool,
     symbol: String,
@@ -49,6 +49,32 @@ pub struct Quote {
 // Instead of fighting it just turn off camel case warnings for this enum.
 #[allow(non_camel_case_types)]
 #[derive(RustcDecodable, RustcEncodable, Debug)]
+#[allow(non_snake_case)] //when I make it order_type it doesn't work
+pub struct Order {
+    ok: bool,
+    symbol: String,
+    venue: String,
+    direction: String,
+    original_qty: Option<usize>,
+    qty: Option<usize>,
+    price: Option<usize>,
+    orderType: String,
+    id: usize,
+    account: String,
+    ts: Option<String>,
+    fills: Vec<Fill>,
+    total_filled: Option<usize>,
+    open: bool
+}
+
+#[derive(RustcDecodable, RustcEncodable, Debug)]
+pub struct Fill {
+    price: Option<usize>,
+    qty: Option<usize>,
+    ts: Option<String>
+}
+
+#[derive(RustcDecodable, RustcEncodable, Debug)]
 pub enum OrderDirection {
     buy,
     sell,
@@ -61,13 +87,6 @@ pub enum OrderType {
     Market,
     FillOrKill,
     ImmediateOrCancel,
-}
-
-#[derive(RustcDecodable, RustcEncodable, Debug)]
-pub struct Fill {
-    price: Option<usize>,
-    qty: Option<usize>,
-    ts: Option<String>,
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
@@ -98,6 +117,13 @@ pub struct StockTicker {
 pub struct StockList {
     ok: bool,
     symbols: Vec< StockTicker>,
+}
+
+#[derive(RustcDecodable, RustcEncodable, Debug)]
+pub struct StockOrdersStatuses {
+    ok: bool,
+    venue: String,
+    orders: Vec< Order >
 }
 
 #[derive(Debug)]
@@ -284,7 +310,7 @@ impl Stockfighter {
     /// let sf = Stockfighter::new("fake api key");
     /// assert_eq!(true, sf.stocks_on_a_venue("TESTEX").is_ok());
     /// ```
-    pub fn stocks_on_a_venue( &self, venue : &str ) -> Result<StockList> {
+    pub fn stocks_on_a_venue(&self, venue: &str) -> Result<StockList> {
 
         let url = format!("https://api.stockfighter.io/ob/api/venues/{}/stocks", venue );
 
@@ -315,10 +341,12 @@ impl Stockfighter {
 
         let client = Client::new();
 
-        let mut res = try!(client
-            .get(&url)
-            .header(XStarfighterAuthorization(self.api_key.clone())) // TODO fix clone here.
-            .send());
+        let mut res = try!(
+            client
+                .get(&url)
+                .header(XStarfighterAuthorization(self.api_key.clone())) // TODO fix clone here.
+                .send()
+        );
 
         if res.status != StatusCode::Ok {
             return Err(StockfighterError::ApiError);
@@ -326,11 +354,38 @@ impl Stockfighter {
 
         let mut body = String::new();
         try!(res.read_to_string(&mut body));
-        
+
         let order_status = try!(json::decode::<OrderStatus>(&body));
-        
+
         match order_status.ok {
             true => Ok(order_status),
+            false => Err(StockfighterError::ApiError)
+        }
+    }
+
+    // https://starfighter.readme.io/docs/status-for-all-orders-in-a-stock
+    pub fn status_for_all_orders_on_a_stock(&self, venue: &str, account: &str, stock: &str) -> Result<StockOrdersStatuses> {
+
+        let url = format!("https://api.stockfighter.io/ob/api/venues/{}/accounts/{}/stocks/{}/orders", venue, account, stock );
+
+        let client = Client::new();
+
+        let mut res = try!(client
+                           .get(&url)
+                           .header(XStarfighterAuthorization(self.api_key.clone())) // TODO fix the use of clone here
+                           .send());
+
+        if res.status != StatusCode::Ok {
+            return Err(StockfighterError::VenueDown(venue.to_owned()));
+        }
+
+        let mut body = String::new();
+        try!(res.read_to_string(&mut body));
+
+        let stock_statuses = try!(json::decode::<StockOrdersStatuses>(&body));
+
+        match stock_statuses.ok {
+            true => Ok(stock_statuses),
             false => Err(StockfighterError::ApiError)
         }
     }
@@ -383,5 +438,13 @@ mod test {
         // As of now an is_ok test will pass with an existing order and an API key.
         let sf = Stockfighter::new("");
         assert!(sf.existing_order_status(1212, "TESTEX", "INVALID").is_err());
+    }
+
+    #[test]
+    fn test_status_for_all_orders_on_a_stock() {
+        // TODO Create an is_ok test when we figure out how to test this without an API key.
+        // As of now an is_ok test will pass with an existing order and an API key.
+        let sf = Stockfighter::new("");
+        assert!(sf.status_for_all_orders_on_a_stock("TESTEX", "BA12DFEI12", "INVALID").is_err());
     }
 }
