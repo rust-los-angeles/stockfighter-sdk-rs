@@ -432,6 +432,39 @@ impl Stockfighter {
             false => Err(StockfighterError::ApiError)
         }
     }
+
+    /// [Cancel An Order](https://starfighter.readme.io/docs/cancel-an-order)
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use stockfighter::Stockfighter;
+    ///
+    /// let sf = Stockfighter::new("fake api key");
+    /// assert!(sf.cancel_an_order("TESTEX", "FOOBAR", 1).is_ok());
+    /// ```
+    pub fn cancel_an_order(&self, venue: &str, stock: &str, order: usize) -> Result<OrderStatus> {
+        let url = format!("https://api.stockfighter.io/ob/api/venues/{}/stocks/{}/orders/{}", venue, stock, order );
+
+        let mut res = try!(self.client
+        .delete(&url)
+        .header(XStarfighterAuthorization(self.api_key.clone())) // TODO fix the use of clone here
+        .send());
+
+        if res.status != StatusCode::Ok {
+            return Err(StockfighterError::ApiError);
+        }
+
+        let mut body = String::new();
+        try!(res.read_to_string(&mut body));
+
+        let order_status = try!(json::decode::<OrderStatus>(&body));
+
+        match order_status.ok {
+            true => Ok(order_status),
+            false => Err(StockfighterError::ApiError)
+        }
+    }
 }
 
 
