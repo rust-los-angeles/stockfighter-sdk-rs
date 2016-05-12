@@ -209,7 +209,7 @@ impl Stockfighter {
     /// use stockfighter::Stockfighter;
     ///
     /// let sf = Stockfighter::new("fake api key");
-    /// assert_eq!(true, sf.heartbeat().is_ok());
+    /// assert!(sf.heartbeat().is_ok());
     /// ```
     pub fn heartbeat(&self) -> Result<()> {
         let client = Client::new();
@@ -240,7 +240,7 @@ impl Stockfighter {
     /// use stockfighter::Stockfighter;
     ///
     /// let sf = Stockfighter::new("fake api key");
-    /// assert_eq!(true, sf.venue_heartbeat("TESTEX").is_ok());
+    /// assert!(sf.venue_heartbeat("TESTEX").is_ok());
     /// ```
     pub fn venue_heartbeat(&self, venue: &str) -> Result<()> {
         let url = format!("https://api.stockfighter.io/ob/api/venues/{}/heartbeat", venue);
@@ -272,7 +272,7 @@ impl Stockfighter {
     /// use stockfighter::Stockfighter;
     ///
     /// let sf = Stockfighter::new("fake api key");
-    /// assert_eq!(true, sf.quote("TESTEX", "FOOBAR").is_ok());
+    /// assert!(sf.quote("TESTEX", "FOOBAR").is_ok());
     /// ```
     pub fn quote(&self, venue: &str, stock: &str) -> Result<Quote> {
 
@@ -308,7 +308,7 @@ impl Stockfighter {
     /// use stockfighter::Stockfighter;
     ///
     /// let sf = Stockfighter::new("fake api key");
-    /// assert_eq!(true, sf.stocks_on_a_venue("TESTEX").is_ok());
+    /// assert!(sf.stocks_on_a_venue("TESTEX").is_ok());
     /// ```
     pub fn stocks_on_a_venue(&self, venue: &str) -> Result<StockList> {
 
@@ -399,13 +399,13 @@ mod test {
     #[test]
     fn test_heartbeat() {
         let sf = Stockfighter::new("");
-        assert_eq!(true, sf.heartbeat().is_ok());
+        assert!(sf.heartbeat().is_ok());
     }
 
     #[test]
     fn test_venue() {
         let sf = Stockfighter::new("");
-        assert_eq!(true, sf.venue_heartbeat("TESTEX").is_ok());
+        assert!(sf.venue_heartbeat("TESTEX").is_ok());
         match sf.venue_heartbeat("INVALID") {
             Err(StockfighterError::VenueDown(ref s)) if s == "INVALID" => {},
             _ => panic!()
@@ -415,16 +415,16 @@ mod test {
     #[test]
     fn test_quote() {
         let sf = Stockfighter::new("");
-        assert_eq!(true, sf.quote("TESTEX", "FOOBAR").is_ok());
-        assert_eq!(true, sf.quote("INVALID", "FOOBAR").is_err());
-        assert_eq!(true, sf.quote("TESTEX", "INVALID").is_err());
-        assert_eq!(true, sf.quote("INVALID", "INVALID").is_err());
+        assert!(sf.quote("TESTEX", "FOOBAR").is_ok());
+        assert!(sf.quote("INVALID", "FOOBAR").is_err());
+        assert!(sf.quote("TESTEX", "INVALID").is_err());
+        assert!(sf.quote("INVALID", "INVALID").is_err());
     }
 
     #[test]
     fn test_stocks_on_a_venue() {
         let sf = Stockfighter::new("");
-        assert_eq!(true, sf.stocks_on_a_venue("TESTEX").is_ok());
+        assert!(sf.stocks_on_a_venue("TESTEX").is_ok());
         println!("{:?}", sf.stocks_on_a_venue("TESTEX") );
         match sf.stocks_on_a_venue("INVALID") {
             Err(StockfighterError::VenueDown(ref s)) if s == "INVALID" => {},
