@@ -28,20 +28,21 @@ struct VenueHeartbeat {
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
+#[allow(non_snake_case)]
 pub struct Quote {
     ok: bool,
     symbol: String,
     venue: String,
     bid: Option<usize>,
     ask: Option<usize>,
-    bid_size: Option<usize>,
-    ask_size: Option<usize>,
-    bid_depth: Option<usize>,
-    ask_depth: Option<usize>,
+    bidSize: Option<usize>,
+    askSize: Option<usize>,
+    bidDepth: Option<usize>,
+    askDepth: Option<usize>,
     last: usize,
-    last_size: Option<usize>,
-    last_trade: Option<String>,
-    quote_time: Option<String>,
+    lastSize: Option<usize>,
+    lastTrade: Option<String>,
+    quoteTime: Option<String>,
 }
 
 // We ran into some trouble where "buy" in json wouldn't decode to
