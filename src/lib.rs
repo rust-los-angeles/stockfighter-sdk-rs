@@ -120,6 +120,24 @@ pub struct StockList {
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
+#[allow(non_snake_case)]
+pub struct BidAsk {
+    price: usize,
+    qty: usize,
+    isBuy: bool
+}
+
+#[derive(RustcDecodable, RustcEncodable, Debug)]
+pub struct OrderbookList {
+    ok: bool,
+    venue: String,
+    symbol: String,
+    bids: Option<Vec< BidAsk >>,
+    asks: Option<Vec< BidAsk >>,
+    ts: String
+}
+
+#[derive(RustcDecodable, RustcEncodable, Debug)]
 pub struct StockOrdersStatuses {
     ok: bool,
     venue: String,
@@ -336,6 +354,42 @@ impl Stockfighter {
         }
     }
 
+    /// Get the orderbook for a particular stock
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use stockfighter::Stockfighter;
+    ///
+    /// let sf = Stockfighter::new("fake api key");
+    /// assert!(sf.orderbook_for_stock("TESTEX", "FOOBAR").is_ok());
+    /// ```
+    pub fn orderbook_for_stock(&self, venue: &str, symbol: &str) -> Result<OrderbookList> {
+        let url = format!("https://api.stockfighter.io/ob/api/venues/{}/stocks/{}", venue, symbol);
+
+        let client = Client::new();
+
+        let mut res = try!(client
+            .get(&url)
+            .header(XStarfighterAuthorization(self.api_key.clone())) // TODO fix the use of clone here
+            .send());
+
+        println!("{:?}", res);
+        if res.status != StatusCode::Ok {
+            return Err(StockfighterError::ApiError);
+        }
+
+        let mut body = String::new();
+        try!(res.read_to_string(&mut body));
+
+        let orderbook = try!(json::decode::<OrderbookList>(&body));
+
+        match orderbook.ok {
+            true => Ok(orderbook),
+            false => Err(StockfighterError::ApiError)
+        }
+    }
+
     pub fn existing_order_status(&self, id: usize, venue: &str, stock: &str) -> Result<OrderStatus> {
         let url = format!("https://api.stockfighter.io/ob/api/venues/{}/stocks/{}/orders/{}", venue, stock, id);
 
@@ -428,6 +482,20 @@ mod test {
         println!("{:?}", sf.stocks_on_a_venue("TESTEX") );
         match sf.stocks_on_a_venue("INVALID") {
             Err(StockfighterError::VenueDown(ref s)) if s == "INVALID" => {},
+            _ => panic!()
+        }
+    }
+
+    #[test]
+    fn test_orderbook_for_stock() {
+        let sf = Stockfighter::new("");
+        assert!(sf.stocks_on_a_venue("TESTEX").is_ok());
+        match sf.orderbook_for_stock("INVALID", "FOOBAR") {
+            Err(StockfighterError::ApiError) => {},
+            _ => panic!()
+        }
+        match sf.orderbook_for_stock("TESTEX", "INVALID") {
+            Err(StockfighterError::ApiError) => {},
             _ => panic!()
         }
     }
