@@ -76,6 +76,7 @@ pub struct Fill {
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
+#[allow(non_camel_case_types)]
 pub enum OrderDirection {
     buy,
     sell,
