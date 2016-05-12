@@ -211,12 +211,13 @@ pub type Result<T> = result::Result<T, StockfighterError>;
 
 pub struct Stockfighter {
     api_key: String,
+    client: Client,
 }
 
 impl Stockfighter {
 
     pub fn new<S>(api_key: S) -> Stockfighter where S: Into<String> {
-        Stockfighter { api_key: api_key.into() }
+        Stockfighter { api_key: api_key.into(), client: Client::new() }
     }
 
     /// Check that the Stockfighter API is up
@@ -230,8 +231,7 @@ impl Stockfighter {
     /// assert!(sf.heartbeat().is_ok());
     /// ```
     pub fn heartbeat(&self) -> Result<()> {
-        let client = Client::new();
-        let mut res = try!(client
+        let mut res = try!(self.client
             .get("https://api.stockfighter.io/ob/api/heartbeat")
             .send());
 
@@ -262,8 +262,7 @@ impl Stockfighter {
     /// ```
     pub fn venue_heartbeat(&self, venue: &str) -> Result<()> {
         let url = format!("https://api.stockfighter.io/ob/api/venues/{}/heartbeat", venue);
-        let client = Client::new();
-        let mut res = try!(client
+        let mut res = try!(self.client
             .get(&url)
             .send());
 
@@ -296,9 +295,7 @@ impl Stockfighter {
 
         let url = format!("https://api.stockfighter.io/ob/api/venues/{}/stocks/{}/quote", venue, stock);
 
-        let client = Client::new();
-
-        let mut res = try!(client
+        let mut res = try!(self.client
             .get(&url)
             .header(XStarfighterAuthorization(self.api_key.clone())) // TODO fix the use of clone here
             .send());
@@ -332,9 +329,7 @@ impl Stockfighter {
 
         let url = format!("https://api.stockfighter.io/ob/api/venues/{}/stocks", venue );
 
-        let client = Client::new();
-
-        let mut res = try!(client
+        let mut res = try!(self.client
             .get(&url)
             .header(XStarfighterAuthorization(self.api_key.clone())) // TODO fix the use of clone here
             .send());
@@ -367,9 +362,7 @@ impl Stockfighter {
     pub fn orderbook_for_stock(&self, venue: &str, symbol: &str) -> Result<OrderbookList> {
         let url = format!("https://api.stockfighter.io/ob/api/venues/{}/stocks/{}", venue, symbol);
 
-        let client = Client::new();
-
-        let mut res = try!(client
+        let mut res = try!(self.client
             .get(&url)
             .header(XStarfighterAuthorization(self.api_key.clone())) // TODO fix the use of clone here
             .send());
@@ -393,10 +386,8 @@ impl Stockfighter {
     pub fn existing_order_status(&self, id: usize, venue: &str, stock: &str) -> Result<OrderStatus> {
         let url = format!("https://api.stockfighter.io/ob/api/venues/{}/stocks/{}/orders/{}", venue, stock, id);
 
-        let client = Client::new();
-
         let mut res = try!(
-            client
+            self.client
                 .get(&url)
                 .header(XStarfighterAuthorization(self.api_key.clone())) // TODO fix clone here.
                 .send()
@@ -422,9 +413,7 @@ impl Stockfighter {
 
         let url = format!("https://api.stockfighter.io/ob/api/venues/{}/accounts/{}/stocks/{}/orders", venue, account, stock );
 
-        let client = Client::new();
-
-        let mut res = try!(client
+        let mut res = try!(self.client
                            .get(&url)
                            .header(XStarfighterAuthorization(self.api_key.clone())) // TODO fix the use of clone here
                            .send());
