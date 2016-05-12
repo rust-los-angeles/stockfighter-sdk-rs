@@ -478,7 +478,7 @@ mod test {
     #[test]
     fn test_orderbook_for_stock() {
         let sf = Stockfighter::new("");
-        assert!(sf.stocks_on_a_venue("TESTEX").is_ok());
+        assert!(sf.orderbook_for_stock("TESTEX", "FOOBAR").is_ok());
         match sf.orderbook_for_stock("INVALID", "FOOBAR") {
             Err(StockfighterError::ApiError) => {},
             _ => panic!()
