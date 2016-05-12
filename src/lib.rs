@@ -45,10 +45,6 @@ pub struct Quote {
     quoteTime: Option<String>,
 }
 
-// We ran into some trouble where "buy" in json wouldn't decode to
-// OrderDirection::Buy, but will decode to OrderDirection::buy.
-// Instead of fighting it just turn off camel case warnings for this enum.
-#[allow(non_camel_case_types)]
 #[derive(RustcDecodable, RustcEncodable, Debug)]
 #[allow(non_snake_case)] //when I make it order_type it doesn't work
 pub struct Order {
