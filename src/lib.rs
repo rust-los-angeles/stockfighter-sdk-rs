@@ -10,7 +10,7 @@ use std::result;
 use hyper::Client;
 use hyper::status::StatusCode;
 
-use rustc_serialize::json;
+use rustc_serialize::json::{self,ToJson, Json};
 
 header! { (XStarfighterAuthorization, "X-Starfighter-Authorization") => [String] }
 
@@ -48,20 +48,13 @@ pub struct Quote {
 #[derive(RustcDecodable, RustcEncodable, Debug)]
 #[allow(non_snake_case)] //when I make it order_type it doesn't work
 pub struct Order {
-    ok: bool,
-    symbol: String,
-    venue: String,
-    direction: String,
-    original_qty: Option<usize>,
-    qty: Option<usize>,
-    price: Option<usize>,
-    orderType: String,
-    id: usize,
     account: String,
-    ts: Option<String>,
-    fills: Vec<Fill>,
-    total_filled: Option<usize>,
-    open: bool
+    venue: String,
+    stock: String,
+    price: usize,
+    qty: usize,
+    direction: OrderDirection,
+    orderType: OrderType
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
@@ -87,21 +80,32 @@ pub enum OrderType {
     ImmediateOrCancel,
 }
 
+impl ToJson for OrderType {
+    fn to_json(&self) -> Json {
+        Json::String((match self {
+            &OrderType::Limit => "limit",
+            &OrderType::Market => "market",
+            _ => "foo"
+        }).to_string())
+    }
+}
+
 #[derive(RustcDecodable, RustcEncodable, Debug)]
+#[allow(non_snake_case)]
 pub struct OrderStatus {
     ok: bool,
     symbol: Option<String>,
     venue: Option<String>,
     direction: Option<OrderDirection>,
-    original_qty: Option<usize>,
+    originalQty: Option<usize>,
     qty: Option<usize>,
     price: Option<usize>,
-    order_type: Option<OrderType>,
+    orderType: Option<OrderType>,
     id: Option<usize>,
     account: Option<String>,
     ts: Option<String>,
-    fills: Vec<Fill>,
-    total_filled: Option<usize>,
+    fills: Option<Vec<Fill>>,
+    totalFilled: Option<usize>,
     open: Option<bool>
 }
 
@@ -149,6 +153,7 @@ pub enum StockfighterError {
     ApiError,
     Hyper(hyper::error::Error),
     JsonDecoder(rustc_serialize::json::DecoderError),
+    JsonEncoder(rustc_serialize::json::EncoderError),
     Io(io::Error),
 }
 
@@ -161,6 +166,12 @@ impl From<hyper::error::Error> for StockfighterError {
 impl From<rustc_serialize::json::DecoderError> for StockfighterError {
     fn from(err: rustc_serialize::json::DecoderError) -> Self {
         StockfighterError::JsonDecoder(err)
+    }
+}
+
+impl From<rustc_serialize::json::EncoderError> for StockfighterError {
+    fn from(err: rustc_serialize::json::EncoderError) -> Self {
+        StockfighterError::JsonEncoder(err)
     }
 }
 
@@ -178,6 +189,7 @@ impl fmt::Display for StockfighterError {
             StockfighterError::ApiError => write!(f, "API error"),
             StockfighterError::Hyper(ref err) => write!(f, "{}", err),
             StockfighterError::JsonDecoder(ref err) => write!(f, "{}", err),
+            StockfighterError::JsonEncoder(ref err) => write!(f, "{}", err),
             StockfighterError::Io(ref err) => write!(f, "{}", err),
         }
     }
@@ -191,6 +203,7 @@ impl Error for StockfighterError {
             StockfighterError::ApiError => "API error",
             StockfighterError::Hyper(ref err) => err.description(),
             StockfighterError::JsonDecoder(ref err) => err.description(),
+            StockfighterError::JsonEncoder(ref err) => err.description(),
             StockfighterError::Io(ref err) => err.description(),
         }
     }
@@ -199,6 +212,7 @@ impl Error for StockfighterError {
         match *self {
             StockfighterError::Hyper(ref err) => Some(err as &Error),
             StockfighterError::JsonDecoder(ref err) => Some(err as &Error),
+            StockfighterError::JsonEncoder(ref err) => Some(err as &Error),
             StockfighterError::Io(ref err) => Some(err as &Error),
             _ => None
         }
@@ -377,6 +391,45 @@ impl Stockfighter {
 
         match orderbook.ok {
             true => Ok(orderbook),
+            false => Err(StockfighterError::ApiError)
+        }
+    }
+
+    /// Post a new order
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use stockfighter::Stockfigter;
+    ///
+    /// let sf = Stockfighter::new("fake_api_key");
+    /// let new_order = sf.new_order("ABC123", "TESTEX", "FOOBAR", 10000, 42,
+    ///                              OrderDirection::buy, OrderType::Limit);
+    /// ```
+    pub fn new_order(&self, account: &str, venue: &str, stock: &str, price: usize, qty: usize,
+                     direction: OrderDirection, order_type: OrderType) -> Result<OrderStatus> {
+        let url = format!("https://api.stockfighter.io/ob/api/venues/{}/stocks/{}/orders", venue, stock);
+
+        let order = Order {account: account.to_string(), venue: venue.to_string(), stock: stock.to_string(),
+                           price: price, qty: qty, direction: direction, orderType: order_type};
+        let order_encoded = try!(json::encode(&order)).to_string();
+        println!("Going to send order: {}", order_encoded);
+        let mut res = try!(
+            self.client
+                .post(&url)
+                .header(XStarfighterAuthorization(self.api_key.clone()))
+                .body(&order_encoded)
+                .send()
+        );
+        if res.status != StatusCode::Ok {
+            return Err(StockfighterError::ApiError);
+        }
+        let mut body = String::new();
+        try!(res.read_to_string(&mut body));
+        println!("Got response: {}", body);
+        let order_status = try!(json::decode::<OrderStatus>(&body));
+        match order_status.ok {
+            true => Ok(order_status),
             false => Err(StockfighterError::ApiError)
         }
     }
