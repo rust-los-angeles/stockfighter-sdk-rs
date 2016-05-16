@@ -10,7 +10,7 @@ use std::result;
 use hyper::Client;
 use hyper::status::StatusCode;
 
-use rustc_serialize::json::{self,ToJson, Json};
+use rustc_serialize::json;
 
 header! { (XStarfighterAuthorization, "X-Starfighter-Authorization") => [String] }
 
@@ -54,7 +54,7 @@ pub struct Order {
     price: usize,
     qty: usize,
     direction: OrderDirection,
-    orderType: OrderType
+    orderType: String
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
@@ -72,22 +72,15 @@ pub enum OrderDirection {
 }
 
 // https://starfighter.readme.io/docs/place-new-order#order-types
-#[derive(RustcDecodable, RustcEncodable, Debug)]
+// Note that in the Order and OrderStatus structs the orderType is
+// represented as a string. This is because some of the valid API
+// values are invalid symbols in rust (e.g. "fill-or-kill") and
+// rustc_serialize autoserialization doesn't support field renaming.
 pub enum OrderType {
     Limit,
     Market,
     FillOrKill,
     ImmediateOrCancel,
-}
-
-impl ToJson for OrderType {
-    fn to_json(&self) -> Json {
-        Json::String((match self {
-            &OrderType::Limit => "limit",
-            &OrderType::Market => "market",
-            _ => "foo"
-        }).to_string())
-    }
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
@@ -100,7 +93,7 @@ pub struct OrderStatus {
     originalQty: Option<usize>,
     qty: Option<usize>,
     price: Option<usize>,
-    orderType: Option<OrderType>,
+    orderType: Option<String>,
     id: Option<usize>,
     account: Option<String>,
     ts: Option<String>,
@@ -398,22 +391,28 @@ impl Stockfighter {
     /// Post a new order
     ///
     /// # Example
-    ///
+    /// # Note that this tests for failure, due to the fake api
+    /// key. With a real key, this example should pass.
     /// ```rust
-    /// use stockfighter::Stockfigter;
+    /// use stockfighter::{Stockfighter, OrderDirection, OrderType};
     ///
-    /// let sf = Stockfighter::new("fake_api_key");
-    /// let new_order = sf.new_order("ABC123", "TESTEX", "FOOBAR", 10000, 42,
-    ///                              OrderDirection::buy, OrderType::Limit);
+    /// let sf = Stockfighter::new("fake api key");
+    /// assert!(sf.new_order("EXB123456", "TESTEX", "FOOBAR", 10000, 42,
+    ///                                 OrderDirection::buy, OrderType::Limit).is_err());
     /// ```
     pub fn new_order(&self, account: &str, venue: &str, stock: &str, price: usize, qty: usize,
                      direction: OrderDirection, order_type: OrderType) -> Result<OrderStatus> {
         let url = format!("https://api.stockfighter.io/ob/api/venues/{}/stocks/{}/orders", venue, stock);
 
+        let ot = match order_type {
+            OrderType::Limit => "limit",
+            OrderType::Market => "market",
+            OrderType::FillOrKill => "fill-or-kill",
+            OrderType::ImmediateOrCancel => "immediate-or-cancel"
+        }.to_string();
         let order = Order {account: account.to_string(), venue: venue.to_string(), stock: stock.to_string(),
-                           price: price, qty: qty, direction: direction, orderType: order_type};
+                           price: price, qty: qty, direction: direction, orderType: ot};
         let order_encoded = try!(json::encode(&order)).to_string();
-        println!("Going to send order: {}", order_encoded);
         let mut res = try!(
             self.client
                 .post(&url)
@@ -426,7 +425,6 @@ impl Stockfighter {
         }
         let mut body = String::new();
         try!(res.read_to_string(&mut body));
-        println!("Got response: {}", body);
         let order_status = try!(json::decode::<OrderStatus>(&body));
         match order_status.ok {
             true => Ok(order_status),
