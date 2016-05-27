@@ -1,6 +1,7 @@
 ---
 language: rust
 sudo: false
+cache: cargo
 matrix:
   allow_failures:
     - rust: "nightly"
