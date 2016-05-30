@@ -1,8 +1,11 @@
+---
 language: rust
-
-rust:
-  - nightly
-  - beta
-  - stable
-
 sudo: false
+cache: cargo
+matrix:
+  allow_failures:
+    - rust: "nightly"
+rust:
+  - "stable"
+  - "beta"
+  - "nightly"
