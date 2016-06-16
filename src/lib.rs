@@ -457,7 +457,16 @@ impl Stockfighter {
         }
     }
 
-    // https://starfighter.readme.io/docs/status-for-all-orders-in-a-stock
+    /// [Get the Status For All Orders In A Stock](https://starfighter.readme.io/docs/status-for-all-orders-in-a-stock)
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use stockfighter::Stockfighter;
+    ///
+    /// let sf = Stockfighter::new("fake api key");
+    /// assert!(sf.status_for_all_orders_on_a_stock("TESTEX", "TRADING_ACCOUNT", "FOOBAR").is_ok());
+    /// ```
     pub fn status_for_all_orders_on_a_stock(&self, venue: &str, account: &str, stock: &str) -> Result<StockOrdersStatuses> {
 
         let url = format!("https://api.stockfighter.io/ob/api/venues/{}/accounts/{}/stocks/{}/orders", venue, account, stock );
