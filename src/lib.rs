@@ -457,6 +457,40 @@ impl Stockfighter {
         }
     }
 
+    /// [Get the Status For All Orders](https://starfighter.readme.io/docs/status-for-all-orders)
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use stockfighter::Stockfighter;
+    ///
+    /// let sf = Stockfighter::new("fake api key");
+    /// assert!(sf.status_for_all_orders_on_a_stock("TESTEX", "TRADING_ACCOUNT").is_ok());
+    /// ```
+    pub fn status_for_all_orders(&self, venue: &str, account: &str) -> Result<StockOrdersStatuses> {
+
+        let url = format!("https://api.stockfighter.io/ob/api/venues/{}/accounts/{}/orders", venue, account);
+
+        let mut res = try!(self.client
+                           .get(&url)
+                           .header(XStarfighterAuthorization(self.api_key.clone())) // TODO fix the use of clone here
+                           .send());
+
+        if res.status != StatusCode::Ok {
+            return Err(StockfighterError::VenueDown(venue.to_owned()));
+        }
+
+        let mut body = String::new();
+        try!(res.read_to_string(&mut body));
+
+        let stock_statuses = try!(json::decode::<StockOrdersStatuses>(&body));
+
+        match stock_statuses.ok {
+            true => Ok(stock_statuses),
+            false => Err(StockfighterError::ApiError)
+        }
+    }
+
     /// [Get the Status For All Orders In A Stock](https://starfighter.readme.io/docs/status-for-all-orders-in-a-stock)
     ///
     /// # Example
