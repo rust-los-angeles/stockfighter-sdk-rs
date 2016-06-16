@@ -62,6 +62,14 @@ fn test_existing_order_status() {
 }
 
 #[test]
+fn test_status_for_all_orders() {
+    // TODO Create an is_ok test when we figure out how to test this without an API key.
+    // As of now an is_ok test will pass with an existing order and an API key.
+    let sf = Stockfighter::new("");
+    assert!(sf.status_for_all_orders("TESTEX", "BA12DFEI12").is_err());
+}
+
+#[test]
 fn test_status_for_all_orders_on_a_stock() {
     // TODO Create an is_ok test when we figure out how to test this without an API key.
     // As of now an is_ok test will pass with an existing order and an API key.

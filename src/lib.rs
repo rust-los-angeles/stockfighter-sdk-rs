@@ -461,11 +461,11 @@ impl Stockfighter {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```no_run
     /// use stockfighter::Stockfighter;
     ///
     /// let sf = Stockfighter::new("fake api key");
-    /// assert!(sf.status_for_all_orders_on_a_stock("TESTEX", "TRADING_ACCOUNT").is_ok());
+    /// assert!(sf.status_for_all_orders("TESTEX", "EXB123456").is_ok());
     /// ```
     pub fn status_for_all_orders(&self, venue: &str, account: &str) -> Result<StockOrdersStatuses> {
 
@@ -495,11 +495,11 @@ impl Stockfighter {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```no_run
     /// use stockfighter::Stockfighter;
     ///
     /// let sf = Stockfighter::new("fake api key");
-    /// assert!(sf.status_for_all_orders_on_a_stock("TESTEX", "TRADING_ACCOUNT", "FOOBAR").is_ok());
+    /// assert!(sf.status_for_all_orders_on_a_stock("TESTEX", "EXB123456", "FOOBAR").is_ok());
     /// ```
     pub fn status_for_all_orders_on_a_stock(&self, venue: &str, account: &str, stock: &str) -> Result<StockOrdersStatuses> {
 
