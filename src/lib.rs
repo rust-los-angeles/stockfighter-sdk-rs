@@ -372,7 +372,6 @@ impl Stockfighter {
             .header(XStarfighterAuthorization(self.api_key.clone())) // TODO fix the use of clone here
             .send());
 
-        println!("{:?}", res);
         if res.status != StatusCode::Ok {
             return Err(StockfighterError::ApiError);
         }
