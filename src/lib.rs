@@ -30,38 +30,38 @@ struct VenueHeartbeat {
 #[derive(RustcDecodable, RustcEncodable, Debug)]
 #[allow(non_snake_case)]
 pub struct Quote {
-    ok: bool,
-    symbol: String,
-    venue: String,
-    bid: Option<usize>,
-    ask: Option<usize>,
-    bidSize: Option<usize>,
-    askSize: Option<usize>,
-    bidDepth: Option<usize>,
-    askDepth: Option<usize>,
-    last: usize,
-    lastSize: Option<usize>,
-    lastTrade: Option<String>,
-    quoteTime: Option<String>,
+    pub ok: bool,
+    pub symbol: String,
+    pub venue: String,
+    pub bid: Option<usize>,
+    pub ask: Option<usize>,
+    pub bidSize: Option<usize>,
+    pub askSize: Option<usize>,
+    pub bidDepth: Option<usize>,
+    pub askDepth: Option<usize>,
+    pub last: usize,
+    pub lastSize: Option<usize>,
+    pub lastTrade: Option<String>,
+    pub quoteTime: Option<String>,
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
 #[allow(non_snake_case)] //when I make it order_type it doesn't work
 pub struct Order {
-    account: String,
-    venue: String,
-    stock: String,
-    price: usize,
-    qty: usize,
-    direction: OrderDirection,
-    orderType: String
+    pub account: String,
+    pub venue: String,
+    pub stock: String,
+    pub price: usize,
+    pub qty: usize,
+    pub direction: OrderDirection,
+    pub orderType: String
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
 pub struct Fill {
-    price: Option<usize>,
-    qty: Option<usize>,
-    ts: Option<String>
+    pub price: Option<usize>,
+    pub qty: Option<usize>,
+    pub ts: Option<String>
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
@@ -86,57 +86,57 @@ pub enum OrderType {
 #[derive(RustcDecodable, RustcEncodable, Debug)]
 #[allow(non_snake_case)]
 pub struct OrderStatus {
-    ok: bool,
-    symbol: Option<String>,
-    venue: Option<String>,
-    direction: Option<OrderDirection>,
-    originalQty: Option<usize>,
-    qty: Option<usize>,
-    price: Option<usize>,
-    orderType: Option<String>,
-    id: Option<usize>,
-    account: Option<String>,
-    ts: Option<String>,
-    fills: Option<Vec<Fill>>,
-    totalFilled: Option<usize>,
-    open: Option<bool>
+    pub ok: bool,
+    pub symbol: Option<String>,
+    pub venue: Option<String>,
+    pub direction: Option<OrderDirection>,
+    pub originalQty: Option<usize>,
+    pub qty: Option<usize>,
+    pub price: Option<usize>,
+    pub orderType: Option<String>,
+    pub id: Option<usize>,
+    pub account: Option<String>,
+    pub ts: Option<String>,
+    pub fills: Option<Vec<Fill>>,
+    pub totalFilled: Option<usize>,
+    pub open: Option<bool>
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
 pub struct StockTicker {
-    name: String,
-    symbol: String,
+    pub name: String,
+    pub symbol: String,
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
 pub struct StockList {
-    ok: bool,
-    symbols: Vec< StockTicker>,
+    pub ok: bool,
+    pub symbols: Vec< StockTicker>,
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
 #[allow(non_snake_case)]
 pub struct BidAsk {
-    price: usize,
-    qty: usize,
-    isBuy: bool
+    pub price: usize,
+    pub qty: usize,
+    pub isBuy: bool
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
 pub struct OrderbookList {
-    ok: bool,
-    venue: String,
-    symbol: String,
-    bids: Option<Vec< BidAsk >>,
-    asks: Option<Vec< BidAsk >>,
-    ts: String
+    pub ok: bool,
+    pub venue: String,
+    pub symbol: String,
+    pub bids: Option<Vec< BidAsk >>,
+    pub asks: Option<Vec< BidAsk >>,
+    pub ts: String
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
 pub struct StockOrdersStatuses {
-    ok: bool,
-    venue: String,
-    orders: Vec< Order >
+    pub ok: bool,
+    pub venue: String,
+    pub orders: Vec< Order >
 }
 
 #[derive(Debug)]
