@@ -1,16 +1,25 @@
 #[macro_use]
 extern crate hyper;
 extern crate rustc_serialize;
+extern crate websocket;
 
 use std::fmt;
 use std::io::{self, Read};
 use std::error::Error;
 use std::result;
+use std::thread;
+use std::sync::mpsc::channel;
 
 use hyper::Client;
 use hyper::status::StatusCode;
 
 use rustc_serialize::json;
+
+use websocket::{Message, Sender, Receiver};
+use websocket::message::Type;
+use websocket::client::request::Url;
+use websocket::Client as WSClient;
+use websocket::result::WebSocketError;
 
 header! { (XStarfighterAuthorization, "X-Starfighter-Authorization") => [String] }
 
@@ -27,7 +36,7 @@ struct VenueHeartbeat {
     venue: Option<String>,
 }
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(Debug, RustcDecodable, RustcEncodable)]
 pub struct Quote {
     ok: bool,
     symbol: String,
@@ -79,6 +88,7 @@ pub enum StockfighterError {
     Hyper(hyper::error::Error),
     JsonDecoder(rustc_serialize::json::DecoderError),
     Io(io::Error),
+    WebSocket(WebSocketError),
 }
 
 impl From<hyper::error::Error> for StockfighterError {
@@ -99,6 +109,12 @@ impl From<io::Error> for StockfighterError {
     }
 }
 
+impl From<WebSocketError> for StockfighterError {
+    fn from(err: WebSocketError) -> Self {
+        StockfighterError::WebSocket(err)
+    }
+}
+
 impl fmt::Display for StockfighterError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -108,6 +124,7 @@ impl fmt::Display for StockfighterError {
             StockfighterError::Hyper(ref err) => write!(f, "{}", err),
             StockfighterError::JsonDecoder(ref err) => write!(f, "{}", err),
             StockfighterError::Io(ref err) => write!(f, "{}", err),
+            StockfighterError::WebSocket(ref err) => write!(f, "{}", err),
         }
     }
 }
@@ -121,6 +138,7 @@ impl Error for StockfighterError {
             StockfighterError::Hyper(ref err) => err.description(),
             StockfighterError::JsonDecoder(ref err) => err.description(),
             StockfighterError::Io(ref err) => err.description(),
+            StockfighterError::WebSocket(ref err) => err.description(),
         }
     }
 
@@ -129,6 +147,7 @@ impl Error for StockfighterError {
             StockfighterError::Hyper(ref err) => Some(err as &Error),
             StockfighterError::JsonDecoder(ref err) => Some(err as &Error),
             StockfighterError::Io(ref err) => Some(err as &Error),
+            StockfighterError::WebSocket(ref err) => Some(err as &Error),
             _ => None
         }
     }
@@ -280,6 +299,60 @@ impl Stockfighter {
             false => Err(StockfighterError::ApiError)
         }
     }
+
+    pub fn ticker_tape_venue_with<F>(&self, account: &str, venue: &str, cb: F) -> Result<thread::JoinHandle<()>>
+        where F: Send + 'static + Fn(Quote) {
+
+        let url = format!("wss://api.stockfighter.io/ob/api/ws/{}/venues/{}/tickertape", account, venue);
+        let wss = Url::parse(&url).unwrap();
+
+        let request = try!(WSClient::connect(&wss));
+        let response = try!(request.send());
+        try!(response.validate());
+
+        let (mut sender, mut receiver) = response.begin().split();
+
+        let handle = thread::spawn(move || {
+            for message in receiver.incoming_messages() {
+                let message: Message = message.unwrap();
+
+                match message.opcode {
+                    Type::Text => {
+                        let response = std::str::from_utf8(&*message.payload).unwrap();
+                        let quote = json::decode::<Quote>(&response).unwrap();
+                        cb(quote);
+                    }
+                    Type::Close => {
+                        let _ = sender.send_message(&Message::close());
+                        break;
+                    }
+                    Type::Ping => {
+                        sender.send_message(&Message::pong(message.payload)).unwrap();
+                    }
+                    _ => (),
+                }
+            }
+        });
+
+        Ok(handle)
+
+        //cb(
+        //    Quote {
+        //        ok: true,
+        //        symbol: "".to_owned(),
+        //        venue: "".to_owned(),
+        //        bid: None,
+        //        ask: None,
+        //        bid_size: None,
+        //        ask_size: None,
+        //        bid_depth: None,
+        //        ask_depth: None,
+        //        last: 0,
+        //        last_size: None,
+        //        last_trade: None,
+        //        quote_time: None,
+        //    });
+    }
 }
 
 
@@ -321,6 +394,13 @@ mod test {
             Err(StockfighterError::VenueDown(ref s)) if s == "INVALID" => {},
             _ => panic!()
         }
+    }
+
+    #[test]
+    fn test_ticker_tape_venue_with() {
+        let sf = Stockfighter::new("");
+        let handle = sf.ticker_tape_venue_with("EXB123456", "TESTEX", |quote| println!("{:?}", quote));
+        let _ = handle.unwrap().join();
     }
 
 }
