@@ -1,16 +1,26 @@
 #[macro_use]
+extern crate log;
+#[macro_use]
 extern crate hyper;
 extern crate rustc_serialize;
+extern crate websocket;
 
 use std::fmt;
 use std::io::{self, Read};
 use std::error::Error;
 use std::result;
+use std::thread;
 
 use hyper::Client;
 use hyper::status::StatusCode;
 
 use rustc_serialize::json;
+
+use websocket::{Message, Sender, Receiver};
+use websocket::message::Type;
+use websocket::client::request::Url;
+use websocket::Client as WSClient;
+use websocket::result::WebSocketError;
 
 header! { (XStarfighterAuthorization, "X-Starfighter-Authorization") => [String] }
 
@@ -43,6 +53,29 @@ pub struct Quote {
     pub lastSize: Option<usize>,
     pub lastTrade: Option<String>,
     pub quoteTime: Option<String>,
+}
+
+#[derive(RustcDecodable, RustcEncodable, Debug)]
+#[allow(non_snake_case)]
+pub struct TickerTapeQuote {
+    pub symbol: String,
+    pub venue: String,
+    pub bid: Option<usize>,
+    pub ask: Option<usize>,
+    pub bidSize: Option<usize>,
+    pub askSize: Option<usize>,
+    pub bidDepth: Option<usize>,
+    pub askDepth: Option<usize>,
+    pub last: usize,
+    pub lastSize: Option<usize>,
+    pub lastTrade: Option<String>,
+    pub quoteTime: Option<String>,
+}
+
+#[derive(RustcDecodable, RustcEncodable, Debug)]
+pub struct TickerTape {
+    pub ok: bool,
+    pub quote: TickerTapeQuote,
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug)]
@@ -148,6 +181,7 @@ pub enum StockfighterError {
     JsonDecoder(rustc_serialize::json::DecoderError),
     JsonEncoder(rustc_serialize::json::EncoderError),
     Io(io::Error),
+    WebSocket(WebSocketError),
 }
 
 impl From<hyper::error::Error> for StockfighterError {
@@ -174,6 +208,12 @@ impl From<io::Error> for StockfighterError {
     }
 }
 
+impl From<WebSocketError> for StockfighterError {
+    fn from(err: WebSocketError) -> Self {
+        StockfighterError::WebSocket(err)
+    }
+}
+
 impl fmt::Display for StockfighterError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -184,6 +224,7 @@ impl fmt::Display for StockfighterError {
             StockfighterError::JsonDecoder(ref err) => write!(f, "{}", err),
             StockfighterError::JsonEncoder(ref err) => write!(f, "{}", err),
             StockfighterError::Io(ref err) => write!(f, "{}", err),
+            StockfighterError::WebSocket(ref err) => write!(f, "{}", err),
         }
     }
 }
@@ -198,6 +239,7 @@ impl Error for StockfighterError {
             StockfighterError::JsonDecoder(ref err) => err.description(),
             StockfighterError::JsonEncoder(ref err) => err.description(),
             StockfighterError::Io(ref err) => err.description(),
+            StockfighterError::WebSocket(ref err) => err.description(),
         }
     }
 
@@ -207,6 +249,7 @@ impl Error for StockfighterError {
             StockfighterError::JsonDecoder(ref err) => Some(err as &Error),
             StockfighterError::JsonEncoder(ref err) => Some(err as &Error),
             StockfighterError::Io(ref err) => Some(err as &Error),
+            StockfighterError::WebSocket(ref err) => Some(err as &Error),
             _ => None
         }
     }
@@ -352,6 +395,46 @@ impl Stockfighter {
             true => Ok(stocklist),
             false => Err(StockfighterError::ApiError)
         }
+    }
+
+    pub fn ticker_tape_venue_with<F>(&self, account: &str, venue: &str, cb: F) -> Result<thread::JoinHandle<()>>
+        where F: Send + 'static + Fn(TickerTapeQuote) {
+
+        let url = format!("wss://api.stockfighter.io/ob/api/ws/{}/venues/{}/tickertape", account, venue);
+        let wss = Url::parse(&url).unwrap();
+
+        let request = try!(WSClient::connect(&wss));
+        let response = try!(request.send());
+        try!(response.validate());
+
+        let (mut sender, mut receiver) = response.begin().split();
+
+        let handle = thread::spawn(move || {
+            trace!("Spawned thread for ticker tape websocket");
+            for message in receiver.incoming_messages() {
+                let message: Message = message.unwrap();
+                trace!("Received message {:?} from ticker tape websocket", message);
+
+                match message.opcode {
+                    Type::Text => {
+                        let response = std::str::from_utf8(&*message.payload).unwrap();
+                        debug!("Valid test response {} from ticker tape websocket", &response);
+                        let tt_quote = json::decode::<TickerTape>(&response).unwrap();
+                        cb(tt_quote.quote);
+                    }
+                    Type::Close => {
+                        let _ = sender.send_message(&Message::close());
+                        break;
+                    }
+                    Type::Ping => {
+                        sender.send_message(&Message::pong(message.payload)).unwrap();
+                    }
+                    _ => (),
+                }
+            }
+        });
+
+        Ok(handle)
     }
 
     /// Get the orderbook for a particular stock
