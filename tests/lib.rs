@@ -1,4 +1,5 @@
 extern crate stockfighter;
+extern crate env_logger;
 
 use stockfighter::Stockfighter;
 use stockfighter::StockfighterError;
@@ -75,4 +76,14 @@ fn test_status_for_all_orders_on_a_stock() {
     // As of now an is_ok test will pass with an existing order and an API key.
     let sf = Stockfighter::new("");
     assert!(sf.status_for_all_orders_on_a_stock("TESTEX", "BA12DFEI12", "INVALID").is_err());
+}
+
+#[test]
+#[ignore] // this test will block forever
+fn test_ticker_tape_venue_with() {
+    env_logger::init().unwrap();
+
+    let sf = Stockfighter::new("");
+    let handle = sf.ticker_tape_venue_with("EXB123456", "TESTEX", |quote| println!("{:?}", quote));
+    let _ = handle.unwrap().join();
 }

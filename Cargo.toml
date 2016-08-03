@@ -18,3 +18,6 @@ name = "stockfighter"
 
 hyper = "~0.7"
 rustc-serialize = "~0.3"
+websocket = "0.15.2"
+log = "0.3.5"
+env_logger = "0.3.4"
