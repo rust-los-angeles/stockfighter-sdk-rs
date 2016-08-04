@@ -89,10 +89,31 @@ fn test_ticker_tape_venue_with() {
 }
 
 #[test]
+#[ignore] // this test will block forever
 fn test_ticker_tape_venue_stock_with() {
     let _ = env_logger::init();
 
     let sf = Stockfighter::new("");
     let handle = sf.ticker_tape_venue_stock_with("EXB123456", "TESTEX", "FOOBAR", |quote| println!("{:?}", quote));
+    let _ = handle.unwrap().join();
+}
+
+#[test]
+#[ignore] // this test will block forever
+fn test_executions_venue_with() {
+    let _ = env_logger::init();
+
+    let sf = Stockfighter::new("");
+    let handle = sf.executions_venue_with("EXB123456", "TESTEX", |quote| println!("{:?}", quote));
+    let _ = handle.unwrap().join();
+}
+
+#[test]
+#[ignore] // this test will block forever
+fn test_executions_venue_stock_with() {
+    let _ = env_logger::init();
+
+    let sf = Stockfighter::new("");
+    let handle = sf.executions_venue_stock_with("EXB123456", "TESTEX", "FOOBAR", |quote| println!("{:?}", quote));
     let _ = handle.unwrap().join();
 }
