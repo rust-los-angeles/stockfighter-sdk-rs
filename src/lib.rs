@@ -172,6 +172,23 @@ pub struct StockOrdersStatuses {
     pub orders: Vec< Order >
 }
 
+#[derive(RustcDecodable, RustcEncodable, Debug)]
+#[allow(non_snake_case)]
+pub struct ExecutionOrdersStatuses {
+    pub ok: bool,
+    pub account: String,
+    pub venue: String,
+    pub symbol: String,
+    pub order: OrderStatus,
+    pub standingId: usize,
+    pub incomingId: usize,
+    pub price: usize,
+    pub filled: usize,
+    pub filledAt: String,
+    pub standingComplete: bool,
+    pub incomingComplete: bool,
+}
+
 #[derive(Debug)]
 pub enum StockfighterError {
     ApiDown,
@@ -397,10 +414,9 @@ impl Stockfighter {
         }
     }
 
-    pub fn ticker_tape_venue_with<F>(&self, account: &str, venue: &str, cb: F) -> Result<thread::JoinHandle<()>>
+    fn ticker_tape<F>(&self, url: &str, cb: F) -> Result<thread::JoinHandle<()>>
         where F: Send + 'static + Fn(TickerTapeQuote) {
 
-        let url = format!("wss://api.stockfighter.io/ob/api/ws/{}/venues/{}/tickertape", account, venue);
         let wss = Url::parse(&url).unwrap();
 
         let request = try!(WSClient::connect(&wss));
@@ -435,6 +451,73 @@ impl Stockfighter {
         });
 
         Ok(handle)
+    }
+
+    pub fn ticker_tape_venue_with<F>(&self, account: &str, venue: &str, cb: F) -> Result<thread::JoinHandle<()>>
+        where F: Send + 'static + Fn(TickerTapeQuote) {
+
+        let url = format!("wss://api.stockfighter.io/ob/api/ws/{}/venues/{}/tickertape", account, venue);
+        self.ticker_tape(&url, cb)
+    }
+
+    pub fn ticker_tape_venue_stock_with<F>(&self, account: &str, venue: &str, stock: &str, cb: F) -> Result<thread::JoinHandle<()>>
+        where F: Send + 'static + Fn(TickerTapeQuote) {
+
+        let url = format!("wss://api.stockfighter.io/ob/api/ws/{}/venues/{}/tickertape/stocks/{}", account, venue, stock);
+        self.ticker_tape(&url, cb)
+    }
+
+    fn executions<F>(&self, url: &str, cb: F) -> Result<thread::JoinHandle<()>>
+        where F: Send + 'static + Fn(ExecutionOrdersStatuses) {
+
+        let wss = Url::parse(&url).unwrap();
+
+        let request = try!(WSClient::connect(&wss));
+        let response = try!(request.send());
+        try!(response.validate());
+
+        let (mut sender, mut receiver) = response.begin().split();
+
+        let handle = thread::spawn(move || {
+            trace!("Spawned thread for executions websocket");
+            for message in receiver.incoming_messages() {
+                let message: Message = message.unwrap();
+                trace!("Received message {:?} from executions websocket", message);
+
+                match message.opcode {
+                    Type::Text => {
+                        let response = std::str::from_utf8(&*message.payload).unwrap();
+                        debug!("Valid test response {} from executions websocket", &response);
+                        let status = json::decode::<ExecutionOrdersStatuses>(&response).unwrap();
+                        cb(status);
+                    }
+                    Type::Close => {
+                        let _ = sender.send_message(&Message::close());
+                        break;
+                    }
+                    Type::Ping => {
+                        sender.send_message(&Message::pong(message.payload)).unwrap();
+                    }
+                    _ => (),
+                }
+            }
+        });
+
+        Ok(handle)
+    }
+
+    pub fn executions_venue_with<F>(&self, account: &str, venue: &str, cb: F) -> Result<thread::JoinHandle<()>>
+        where F: Send + 'static + Fn(ExecutionOrdersStatuses) {
+
+        let url = format!("wss://api.stockfighter.io/ob/api/ws/{}/venues/{}/executions", account, venue);
+        self.executions(&url, cb)
+    }
+
+    pub fn executions_venue_stock_with<F>(&self, account: &str, venue: &str, stock: &str, cb: F) -> Result<thread::JoinHandle<()>>
+        where F: Send + 'static + Fn(ExecutionOrdersStatuses) {
+
+        let url = format!("wss://api.stockfighter.io/ob/api/ws/{}/venues/{}/executions/stocks/{}", account, venue, stock);
+        self.executions(&url, cb)
     }
 
     /// Get the orderbook for a particular stock
