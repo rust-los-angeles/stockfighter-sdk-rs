@@ -397,10 +397,9 @@ impl Stockfighter {
         }
     }
 
-    pub fn ticker_tape_venue_with<F>(&self, account: &str, venue: &str, cb: F) -> Result<thread::JoinHandle<()>>
+    fn ticker_tape<F>(&self, url: &str, cb: F) -> Result<thread::JoinHandle<()>>
         where F: Send + 'static + Fn(TickerTapeQuote) {
 
-        let url = format!("wss://api.stockfighter.io/ob/api/ws/{}/venues/{}/tickertape", account, venue);
         let wss = Url::parse(&url).unwrap();
 
         let request = try!(WSClient::connect(&wss));
@@ -435,6 +434,20 @@ impl Stockfighter {
         });
 
         Ok(handle)
+    }
+
+    pub fn ticker_tape_venue_with<F>(&self, account: &str, venue: &str, cb: F) -> Result<thread::JoinHandle<()>>
+        where F: Send + 'static + Fn(TickerTapeQuote) {
+
+        let url = format!("wss://api.stockfighter.io/ob/api/ws/{}/venues/{}/tickertape", account, venue);
+        self.ticker_tape(&url, cb)
+    }
+
+    pub fn ticker_tape_venue_stock_with<F>(&self, account: &str, venue: &str, stock: &str, cb: F) -> Result<thread::JoinHandle<()>>
+        where F: Send + 'static + Fn(TickerTapeQuote) {
+
+        let url = format!("wss://api.stockfighter.io/ob/api/ws/{}/venues/{}/tickertape/stocks/{}", account, venue, stock);
+        self.ticker_tape(&url, cb)
     }
 
     /// Get the orderbook for a particular stock
